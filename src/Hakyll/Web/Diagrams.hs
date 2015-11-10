@@ -22,12 +22,25 @@ import           Text.Pandoc
 import           Text.Pandoc.Diagrams
 import           Text.Pandoc.SelfContained
 import           Text.ParserCombinators.Parsec
+import           Control.Monad (liftM)
 
 buildMarkdown :: Rules ()
 buildMarkdown = do
     match "*.md" $ do
       route idRoute
       compile $ pandocCompilerDiagrams
+
+addSlash :: String -> String
+addSlash (x:xs)
+  | '/' == x = x:xs
+  | otherwise = '/' : (x:xs)
+addSlash _ = []
+
+-- | Modify the image name from a relative path to a fake absolute path
+--   as required by hakyll relativizeUrls function.
+fixupImageName :: Block -> Block
+fixupImageName (Plain [Image x (filename,y)]) = (Plain [Image x (addSlash filename,y)])
+fixupImageName x = x
 
 -- | Read a page render using pandoc
 pandocCompilerDiagrams :: Compiler (Item String)
@@ -49,7 +62,7 @@ renderBlockDiagrams :: FilePath -> Pandoc -> IO Pandoc
 renderBlockDiagrams outDir p = bottomUpM (concatMapM (diagramsFilter outDir)) p
 
 diagramsFilter :: FilePath -> Block -> IO [Block]
-diagramsFilter outDir x = (insertDiagrams $ Opts "html" outDir "example") x
+diagramsFilter outDir x = liftM (map fixupImageName) $ (insertDiagrams $ Opts "html" outDir "example") x
 
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
 concatMapM f xs = concat <$> mapM f xs
