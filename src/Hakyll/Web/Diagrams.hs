@@ -46,4 +46,10 @@ diagramsTransformer outDir pandoc = unsafeCompiler $ renderBlockDiagrams outDir 
 --   from the output) and provided as additional definitions that will
 --   be in scope during evaluation of all @diagrams@ blocks.
 renderBlockDiagrams :: FilePath -> Pandoc -> IO Pandoc
-renderBlockDiagrams outDir p = bottomUpM (insertDiagrams $ Opts outDir "example") p
+renderBlockDiagrams outDir p = bottomUpM (concatMapM (diagramsFilter outDir)) p
+
+diagramsFilter :: FilePath -> Block -> IO [Block]
+diagramsFilter outDir x = (insertDiagrams $ Opts "html" outDir "example") x
+
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+concatMapM f xs = concat <$> mapM f xs
